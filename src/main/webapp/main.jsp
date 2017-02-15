@@ -33,6 +33,28 @@
         </h1>
     </div>
 
+    <div class="alert alert-info" role="alert" id="loginDiv" >
+
+        <form id="loginForm">
+            <div class="form-group">
+                <input type="text" class="form-control"
+                       id="login"
+                       name="login"
+                       placeholder="Enter login">
+            </div>
+            <div class="form-group">
+                <input type="password" class="form-control"
+                       id="password"
+                       name="password"
+                       placeholder="Enter password">
+            </div>
+            <button type="submit" class="btn btn-primary">Log in</button>
+        </form>
+    </div>
+
+    <button type="button" class="btn btn-info" id="logInRequestBtn">Log in</button>
+    <button type="button" class="btn btn-info" id="logOutBtn">Log out</button>
+
     <a href="#" class="btn btn-default" id="cp4">Change background color</a>
     <a id="myUrl" href="qwewqeqwe"></a>
 

@@ -27,10 +27,10 @@ function request($submit, $resultNumber, $searchResult) {
     }
 
     function onSuccess(response) {
-
         console.log("getting response");
+        console.log(response);
         searchDisabled(false);
-        if (data.outputType != null) {
+        if (response.logs == null) {
             onFile(response);
             return;
         }
@@ -39,10 +39,9 @@ function request($submit, $resultNumber, $searchResult) {
 
     function onFile(url) {
         //todo check undefined
-
         console.log("on file");
         console.log(url);
-        var fullUrl = "http://localhost:7001/log_search-1.0-SNAPSHOT/resources/download/" + url.name;
+        var fullUrl = "http://localhost:7001/log_search-1.0-SNAPSHOT/resources/download/" + url.fileName;
         console.log(fullUrl);
         document.location.href = fullUrl;
         console.log('wqeqweqweqwewqeqwe');
@@ -62,9 +61,15 @@ function request($submit, $resultNumber, $searchResult) {
         scrollToResult();
     }
 
-    function onError(event) {
+    function onError(error) {
         console.log("error");
-        console.log(event);
+        console.log(error);
+        if (error.status == 401) {
+            console.log("auth");
+            $("#loginDiv").show();
+            $("#logInRequestBtn").hide();
+            $("#logOutBtn").hide();
+        }
         searchDisabled(false);
     }
 
@@ -104,11 +109,84 @@ function onSearch(event) {
     return false;
 }
 
+function onLogin(event) {
+    event.preventDefault();
+    console.log("logging in");
+    $.ajax({
+        type: 'POST',
+        url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/auth/login',
+        data: JSON.stringify({
+            login: "weblogic",
+            password: "password1"
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        success: onLoginSuccess,
+        error: onLoginError
+    });
+    return false;
+}
+
+function onLoginSuccess() {
+    console.log("login success");
+    $("#loginDiv").hide();
+    $("#logOutBtn").show();
+    // console.log(event);
+}
+
+function onLoginError(event) {
+    console.log("logging error");
+}
+
 $(function () {
     console.log("loaded");
 
+    var $logInRequestBtn = $("#logInRequestBtn");
+    $logInRequestBtn.on('click', function (e) {
+        $("#loginDiv").show();
+        $logInRequestBtn.hide();
+    });
+
+    var $logOutBtn = $("#logOutBtn");
+    $logOutBtn.hide();
+
+    $logOutBtn.on('click', function () {
+        console.log("logging out");
+        $.ajax({
+            type: 'POST',
+            url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/auth/logout',
+            data: null,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            success: function () {
+                console.log("logout success");
+                $logOutBtn.hide();
+                $logInRequestBtn.show();
+            },
+            error: function () {
+                console.log("logout error");
+            }
+        });
+    });
+
+    $.ajax({
+        type: 'GET',
+        url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/user/info',
+        success: function () {
+            console.log("user data success");
+            $logOutBtn.show();
+            $logInRequestBtn.hide();
+        },
+        error: function () {
+            console.log("user data error");
+        }
+    });
+    $("#loginDiv").hide();
     $('#fromDate').datetimepicker();
     $('#toDate').datetimepicker();
+
 
     $('#cp4').colorpicker().on('changeColor', function (e) {
         $('body')[0].style.backgroundColor = e.color.toString(
@@ -116,4 +194,6 @@ $(function () {
     });
 
     $("#searchForm").submit(onSearch);
+
+    $("#loginForm").submit(onLogin);
 });
