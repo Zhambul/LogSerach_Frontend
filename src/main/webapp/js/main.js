@@ -1,6 +1,19 @@
-function request($submit, $resultNumber, $searchResult) {
+function onSearchSubmit(event) {
+    event.preventDefault();
+    console.log("sending searchRequest");
+    $("#searchResult").empty();
+    $("#resultNumber").empty();
+    var $submit = $(this).find("button[type='submit']");
+    $submit.prop('disabled', true);
+    $submit.text('Searching');
+
+    searchRequest();
+    return false;
+}
+
+function searchRequest() {
     var from = new Date();
-    var data = getData();
+    var data = getSearchFormData();
 
     $.ajax({
         type: 'POST',
@@ -13,55 +26,20 @@ function request($submit, $resultNumber, $searchResult) {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
-        success: onSuccess,
-        error: onError
+        success: onSearchSuccess,
+        error: onSearchError
     });
 
-    function getData() {
-        return {
-            regexp: "weblogic",
-            targetType: "server",
-            targetName: "standalone_server",
-            outputType: 'here'
-        }
-    }
-
-    function onSuccess(response) {
-        console.log("getting response");
-        console.log(response);
+    function onSearchSuccess(response) {
         searchDisabled(false);
         if (response.logs == null) {
             onFile(response);
             return;
         }
-        onSearchResult(response);
+        onSearchResult(response, from);
     }
 
-    function onFile(url) {
-        //todo check undefined
-        console.log("on file");
-        console.log(url);
-        var fullUrl = "http://localhost:7001/log_search-1.0-SNAPSHOT/resources/download/" + url.fileName;
-        console.log(fullUrl);
-        document.location.href = fullUrl;
-        console.log('wqeqweqweqwewqeqwe');
-    }
-
-    function onSearchResult(searchResult) {
-        console.log("on search result");
-        var to = new Date();
-        var timeDiff = to - from;
-        $resultNumber.text("Result: " + searchResult.logs.length + " entries ");
-        $resultNumber.append("<small> " + timeDiff + " ms</small>");
-        searchResult.logs.forEach(function (log, index) {
-            $searchResult.append($('<div/>').text((index + 1) + " " + log.payload));
-            $searchResult.append("<br>");
-        });
-
-        scrollToResult();
-    }
-
-    function onError(error) {
+    function onSearchError(error) {
         console.log("error");
         console.log(error);
         if (error.status == 401) {
@@ -73,40 +51,57 @@ function request($submit, $resultNumber, $searchResult) {
         searchDisabled(false);
     }
 
-    function scrollToResult() {
-        var offset = $resultNumber.offset();
-
-        $('html, body').animate({
-            scrollTop: offset.top,
-            scrollLeft: offset.left
-        });
-    }
-
-    function searchDisabled(disabled) {
-        $submit.prop('disabled', disabled);
-        if (disabled) {
-            $submit.text('Searching');
-        }
-        else {
-            $submit.text('Search');
+    function getSearchFormData() {
+        return {
+            regexp: $('#pattern').val(),
+            targetType: $("#targetType").find("option:selected").html(),
+            targetName: $("#targetName").find("option:selected").html(),
+            outputType: $("#outputType").find("option:selected").html()
         }
     }
 }
 
-function onSearch(event) {
-    event.preventDefault();
-    console.log("sending request");
-    var $searchResult = $("#searchResult");
+function scrollToResult() {
+    var offset = $("#resultNumber").offset();
+
+    $('html, body').animate({
+        scrollTop: offset.top,
+        scrollLeft: offset.left
+    });
+}
+
+function onSearchResult(searchResult, from) {
+    console.log("on search result");
+    var to = new Date();
+    var timeDiff = to - from;
     var $resultNumber = $("#resultNumber");
-    $searchResult.empty();
-    $resultNumber.empty();
-    var $submit = $(this).find("button[type='submit']");
-    $submit.prop('disabled', true);
-    $submit.text('Searching');
+    var $searchResult = $("#searchResult");
+    $resultNumber.text("Result: " + searchResult.logs.length + " entries ");
+    $resultNumber.append("<small> " + timeDiff + " ms</small>");
+    searchResult.logs.forEach(function (log, index) {
+        $searchResult.append($('<div/>').text((index + 1) + " " + log.payload));
+        $searchResult.append("<br>");
+    });
+    scrollToResult();
+}
 
-    request($submit, $resultNumber, $searchResult);
+function searchDisabled(disabled, searching) {
+    var $submit = $("#searchForm").find("button[type='submit']");
+    $submit.prop('disabled', disabled);
+    if (searching) {
+        $submit.text('Searching');
+        return;
+    }
+    $submit.text('Search');
+}
 
-    return false;
+function onFile(url) {
+    console.log("on file");
+    console.log(url);
+    var fullUrl = "http://localhost:7001/log_search-1.0-SNAPSHOT/resources/download/" + url.fileName;
+    console.log(fullUrl);
+    document.location.href = fullUrl;
+    console.log('wqeqweqweqwewqeqwe');
 }
 
 function onLogin(event) {
@@ -116,8 +111,8 @@ function onLogin(event) {
         type: 'POST',
         url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/auth/login',
         data: JSON.stringify({
-            login: "weblogic",
-            password: "password1"
+            login: $("#login").val(),
+            password: $("#password").val()
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -126,58 +121,32 @@ function onLogin(event) {
         error: onLoginError
     });
     return false;
+
+
+    function onLoginSuccess() {
+        console.log("login success");
+        $("#loginDiv").hide();
+        $("#logOut").show();
+        userInfoRequest();
+    }
+
+    function onLoginError(event) {
+        console.log("logging error");
+    }
 }
 
-function onLoginSuccess() {
-    console.log("login success");
-    $("#loginDiv").hide();
-    $("#logOutBtn").show();
-    // console.log(event);
-}
-
-function onLoginError(event) {
-    console.log("logging error");
-}
-
-$(function () {
-    console.log("loaded");
-
-    var $logInRequestBtn = $("#logInRequestBtn");
-    $logInRequestBtn.on('click', function (e) {
-        $("#loginDiv").show();
-        $logInRequestBtn.hide();
-    });
-
-    var $logOutBtn = $("#logOutBtn");
-    $logOutBtn.hide();
-
-    $logOutBtn.on('click', function () {
-        console.log("logging out");
-        $.ajax({
-            type: 'POST',
-            url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/auth/logout',
-            data: null,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            success: function () {
-                console.log("logout success");
-                $logOutBtn.hide();
-                $logInRequestBtn.show();
-            },
-            error: function () {
-                console.log("logout error");
-            }
-        });
-    });
-
+function userInfoRequest() {
     $.ajax({
         type: 'GET',
         url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/user/info',
-        success: function () {
+        success: function (data) {
             console.log("user data success");
-            $logOutBtn.show();
-            $logInRequestBtn.hide();
+            console.log(data);
+            $("#logOut").show();
+            $("#logInRequestBtn").hide();
+            $("#userName").text(data.userName);
+            setTargetInfo(data);
+            searchDisabled(false);
         },
         error: function () {
             console.log("user data error");
@@ -186,14 +155,95 @@ $(function () {
     $("#loginDiv").hide();
     $('#fromDate').datetimepicker();
     $('#toDate').datetimepicker();
+}
 
+function setTargetInfo(data) {
+    var $targetType = $('#targetType');
+    $targetType.empty();
+
+    var targetTypes = Array.from(new Set(data.userPermissions.map(function (it) {
+        return it.targetType;
+    })));
+
+    $.each(targetTypes, function (key, value) {
+        $targetType
+            .append($('<option>', {value: key})
+                .text(value));
+    });
+
+    var selectedTargetType = data.userPermissions[0].targetType;
+    onTargetTypeChanged(selectedTargetType, data.userPermissions);
+
+    $targetType.on('change', function (event) {
+        var targetType = $(this).find("option:selected").html();
+        onTargetTypeChanged(targetType, data.userPermissions);
+    })
+}
+
+function onTargetTypeChanged(targetType, permissions) {
+    $('#targetName').empty();
+
+    var currentTargets = permissions
+        .filter(function (it) {
+            return it.targetType == targetType
+        })
+        .map(function (it) {
+            return it.targetName;
+        });
+
+    $.each(currentTargets, function (key, value) {
+        $('#targetName')
+            .append($('<option>', {value: key})
+                .text(value));
+    });
+}
+
+function onLogOut() {
+    console.log("logging out");
+    $.ajax({
+        type: 'POST',
+        url: 'http://localhost:7001/log_search-1.0-SNAPSHOT/resources/auth/logout',
+        data: null,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        success: function () {
+            console.log("logout success");
+            $("#logOut").hide();
+            $("#logInRequestBtn").show();
+            $("#searchResult").empty();
+            $("#resultNumber").empty();
+            $("#targetName").empty();
+            $("#targetType").empty();
+            $("#pattern").val('');
+            searchDisabled(true, false);
+        },
+        error: function () {
+            console.log("logout error");
+        }
+    });
+}
+
+$(function () {
+    console.log("loaded");
+    searchDisabled(true, false);
+    $("#logOut").hide();
+
+    $("#logInRequestBtn").on('click', function (e) {
+        $("#loginDiv").show();
+        $(this).hide();
+    });
+
+    $("#logOutBtn").on('click', onLogOut);
+
+    userInfoRequest();
 
     $('#cp4').colorpicker().on('changeColor', function (e) {
         $('body')[0].style.backgroundColor = e.color.toString(
             'rgba');
     });
 
-    $("#searchForm").submit(onSearch);
+    $("#searchForm").submit(onSearchSubmit);
 
     $("#loginForm").submit(onLogin);
 });
